@@ -35,14 +35,35 @@ export default function AuthPage() {
   }, [router]);
 
   const ensureUserProfile = async (user) => {
-    await supabase.from("users").upsert(
-      {
+    const existingProfile = await supabase
+      .from("users")
+      .select("id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (existingProfile.error) {
+      throw existingProfile.error;
+    }
+
+    if (existingProfile.data) {
+      return existingProfile.data;
+    }
+
+    const profileInsert = await supabase
+      .from("users")
+      .insert({
         id: user.id,
         email: user.email,
         role: "subscriber",
-      },
-      { onConflict: "id" },
-    );
+      })
+      .select("role")
+      .single();
+
+    if (profileInsert.error) {
+      throw profileInsert.error;
+    }
+
+    return profileInsert.data;
   };
 
   const handleSubmit = async () => {
@@ -73,18 +94,13 @@ export default function AuthPage() {
 
         if (error) throw error;
 
+        let profile = null;
         if (data.user) {
-          await ensureUserProfile(data.user);
+          profile = await ensureUserProfile(data.user);
         }
 
-        const profileResult = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
         router.push(
-          profileResult.data?.role === "admin" ? "/admin" : "/dashboard",
+          profile?.role === "admin" ? "/admin" : "/dashboard",
         );
       }
     } catch (error) {
