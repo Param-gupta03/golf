@@ -4,6 +4,29 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+const subscriptionRows = [
+  {
+    label: "Plans",
+    value: "Monthly plan and Yearly plan (discounted rate)",
+  },
+  {
+    label: "Gateway",
+    value: "Stripe (or equivalent PCI-compliant provider)",
+  },
+  {
+    label: "Access Control",
+    value: "Non-subscribers receive restricted access to platform features",
+  },
+  {
+    label: "Lifecycle",
+    value: "Handles renewal, cancellation, and lapsed-subscription states",
+  },
+  {
+    label: "Validation",
+    value: "Real-time subscription status check on every authenticated request",
+  },
+];
+
 export default function Home() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
@@ -123,6 +146,43 @@ export default function Home() {
               The product leads with impact instead of golf cliches, keeping the
               cause front and center.
             </p>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-[#c9d8d1] bg-[#f3f7f4] p-4 text-[#22352f] shadow-[0_24px_60px_rgba(0,0,0,0.15)] sm:p-6">
+          <div className="overflow-hidden rounded-[1.25rem] border border-[#d7e4de] bg-white">
+            <div className="flex items-center gap-4 bg-[#1c463d] px-4 py-3 text-white sm:px-5">
+              <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-[#d2a23f] px-3 text-base font-bold">
+                04
+              </span>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.08em] sm:text-xl">
+                Subscription & Payment System
+              </h2>
+            </div>
+
+            <div className="grid">
+              {subscriptionRows.map((row, index) => (
+                <div
+                  key={row.label}
+                  className="grid border-t border-[#d7e4de] md:grid-cols-[252px_1fr]"
+                >
+                  <div
+                    className={`px-4 py-3 font-semibold ${
+                      index % 2 === 0 ? "bg-[#eef4f1]" : "bg-[#f6faf7]"
+                    }`}
+                  >
+                    {row.label}
+                  </div>
+                  <div
+                    className={`px-4 py-3 ${
+                      index % 2 === 0 ? "bg-white" : "bg-[#eef4f1]"
+                    }`}
+                  >
+                    {row.value}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </div>

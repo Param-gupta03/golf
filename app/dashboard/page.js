@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
   const [scores, setScores] = useState([]);
   const [newScore, setNewScore] = useState("");
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [editingScoreId, setEditingScoreId] = useState("");
   const [editScoreValue, setEditScoreValue] = useState("");
   const [status, setStatus] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const fetchScores = async (userId) => {
     const res = await api.getScores(userId);
@@ -66,6 +68,42 @@ export default function Dashboard() {
     getUser();
   }, [router]);
 
+  useEffect(() => {
+    const checkoutState = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
+    const returnedPlan = searchParams.get("plan");
+
+    if (!user || !checkoutState) {
+      return;
+    }
+
+    const verifyCheckout = async () => {
+      if (checkoutState === "cancelled") {
+        setStatus("Checkout was cancelled.");
+        router.replace("/dashboard");
+        return;
+      }
+
+      if (checkoutState !== "success" || !sessionId || !returnedPlan) {
+        return;
+      }
+
+      const result = await api.verifyCheckoutSession(sessionId, user.id, returnedPlan);
+
+      if (!result.ok) {
+        setStatus(result.error || "Payment verification failed.");
+        router.replace("/dashboard");
+        return;
+      }
+
+      setStatus("Payment confirmed. Subscription is active.");
+      fetchSubscription(user.id);
+      router.replace("/dashboard");
+    };
+
+    verifyCheckout();
+  }, [router, searchParams, user]);
+
   const handleAddScore = async () => {
     if (!newScore || !user) return;
 
@@ -83,14 +121,23 @@ export default function Dashboard() {
   const handleSubscribe = async () => {
     if (!user) return;
 
-    const result = await api.subscribe(user.id, plan);
+    setCheckoutLoading(true);
+    setStatus("");
+
+    const result = await api.createCheckoutSession(user.id, user.email, plan);
     if (!result.ok) {
       setStatus(result.error || "Subscription failed.");
+      setCheckoutLoading(false);
       return;
     }
 
-    setStatus(`Subscription activated on ${plan} plan.`);
-    fetchSubscription(user.id);
+    if (!result.data?.url) {
+      setStatus("Checkout URL was not returned.");
+      setCheckoutLoading(false);
+      return;
+    }
+
+    window.location.href = result.data.url;
   };
 
   const handleSaveCharity = async () => {
@@ -269,9 +316,10 @@ export default function Dashboard() {
 
               <button
                 onClick={handleSubscribe}
-                className="mt-5 w-full rounded-full bg-emerald-300 px-5 py-3 font-semibold text-black"
+                disabled={checkoutLoading}
+                className="mt-5 w-full rounded-full bg-emerald-300 px-5 py-3 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Activate subscription
+                {checkoutLoading ? "Redirecting to payment..." : "Activate subscription"}
               </button>
 
               <div className="mt-5 rounded-2xl border border-white/8 bg-black/20 p-4 text-sm text-white/70">

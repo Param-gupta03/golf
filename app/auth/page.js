@@ -19,7 +19,15 @@ export default function AuthPage() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        router.replace("/dashboard");
+        const profileResult = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        router.replace(
+          profileResult.data?.role === "admin" ? "/admin" : "/dashboard",
+        );
       }
     };
 
@@ -69,7 +77,15 @@ export default function AuthPage() {
           await ensureUserProfile(data.user);
         }
 
-        router.push("/dashboard");
+        const profileResult = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", data.user.id)
+          .maybeSingle();
+
+        router.push(
+          profileResult.data?.role === "admin" ? "/admin" : "/dashboard",
+        );
       }
     } catch (error) {
       setMessage(error.message ?? "Something went wrong.");

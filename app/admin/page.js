@@ -1,10 +1,12 @@
 "use client";
 
 import { startTransition, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminPage() {
+  const router = useRouter();
   const [status, setStatus] = useState("");
   const [result, setResult] = useState(null);
   const [mode, setMode] = useState("simulate");
@@ -13,6 +15,8 @@ export default function AdminPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [winners, setWinners] = useState([]);
   const [charities, setCharities] = useState([]);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const loadAdminData = async () => {
     const [usersResult, scoresResult, subscriptionsResult, winnersResult, charitiesResult] =
@@ -37,6 +41,30 @@ export default function AdminPage() {
     let active = true;
 
     const boot = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData.user;
+
+      if (!user) {
+        router.replace("/auth");
+        return;
+      }
+
+      const profileResult = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (profileResult.data?.role !== "admin") {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setIsAdmin(true);
+      setAccessChecked(true);
+
       const snapshot = await loadAdminData();
       if (!active) return;
 
@@ -54,7 +82,23 @@ export default function AdminPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
+
+  if (!accessChecked || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-black px-6 py-10 text-white">
+        <div className="mx-auto max-w-4xl rounded-[2rem] border border-white/10 bg-white/5 p-8">
+          <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/70">
+            Admin Control
+          </p>
+          <h1 className="mt-4 text-3xl font-semibold">Checking access...</h1>
+          <p className="mt-3 text-white/65">
+            We&apos;re verifying whether this account has admin permissions.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleDraw = async () => {
     const res = await api.runDraw(mode);
